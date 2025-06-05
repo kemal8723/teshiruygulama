@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  
+  body {
+    @apply min-h-screen bg-gradient-to-br from-slate-50 to-teal-50;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 ease-in-out;
+  }
+  
+  .btn-primary {
+    @apply btn bg-teal-600 text-white hover:bg-teal-700 focus:ring-2 focus:ring-teal-500 focus:ring-offset-2;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-teal-700 border border-teal-200 hover:bg-teal-50;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  @apply w-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-teal-50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-teal-600 rounded-full hover:bg-teal-700;
+}
+
+/* For Lightbox */
+body.lightbox-open {
+  overflow: hidden;
+}
