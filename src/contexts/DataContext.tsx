@@ -65,73 +65,67 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return storedPassword || DEFAULT_MANAGER_PASSWORD;
   });
 
-  // Supabase Realtime subscriptions
+  // Supabase Realtime abonelikleri
   useEffect(() => {
-    const submissionsSubscription = supabase
-      .channel('submissions_channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'submissions'
-        },
-        (payload) => {
+    // Gönderiler için gerçek zamanlı güncelleme
+    const submissionsChannel = supabase.channel('submissions_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'submissions'
+      }, (payload) => {
+        setSubmissions(currentSubmissions => {
+          const updatedSubmission = payload.new as Submission;
+          switch (payload.eventType) {
+            case 'INSERT':
+              return [...currentSubmissions, updatedSubmission];
+            case 'UPDATE':
+              return currentSubmissions.map(sub => 
+                sub.id === updatedSubmission.id ? updatedSubmission : sub
+              );
+            case 'DELETE':
+              return currentSubmissions.filter(sub => sub.id !== updatedSubmission.id);
+            default:
+              return currentSubmissions;
+          }
+        });
+      })
+      .subscribe();
+
+    // Değerlendirmeler için gerçek zamanlı güncelleme
+    const reviewsChannel = supabase.channel('reviews_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reviews'
+      }, (payload) => {
+        const review = payload.new as Review;
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setSubmissions(currentSubmissions => {
-            const updatedSubmission = payload.new as any;
-            switch (payload.eventType) {
-              case 'INSERT':
-                return [...currentSubmissions, updatedSubmission];
-              case 'UPDATE':
-                return currentSubmissions.map(sub => 
-                  sub.id === updatedSubmission.id ? updatedSubmission : sub
-                );
-              case 'DELETE':
-                return currentSubmissions.filter(sub => sub.id !== updatedSubmission.id);
-              default:
-                return currentSubmissions;
-            }
+            return currentSubmissions.map(sub => {
+              if (sub.id === review.submissionId) {
+                const updatedReviews = sub.reviews.filter(r => r.id !== review.id);
+                return {
+                  ...sub,
+                  reviews: [...updatedReviews, review],
+                  status: calculateOverallStatus([...updatedReviews, review])
+                };
+              }
+              return sub;
+            });
           });
         }
-      )
+      })
       .subscribe();
 
-    const reviewsSubscription = supabase
-      .channel('reviews_channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reviews'
-        },
-        (payload) => {
-          const review = payload.new as any;
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setSubmissions(currentSubmissions => {
-              return currentSubmissions.map(sub => {
-                if (sub.id === review.submission_id) {
-                  const updatedReviews = sub.reviews.filter(r => r.id !== review.id);
-                  return {
-                    ...sub,
-                    reviews: [...updatedReviews, review],
-                    status: calculateOverallStatus([...updatedReviews, review])
-                  };
-                }
-                return sub;
-              });
-            });
-          }
-        }
-      )
-      .subscribe();
-
+    // Temizleme işlevi
     return () => {
-      submissionsSubscription.unsubscribe();
-      reviewsSubscription.unsubscribe();
+      submissionsChannel.unsubscribe();
+      reviewsChannel.unsubscribe();
     };
   }, []);
 
+  // Yerel depolama senkronizasyonları
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY_SUBMISSIONS, JSON.stringify(submissions));
   }, [submissions]);
@@ -202,99 +196,95 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const addSubmission = useCallback(async (storeId: string, equipmentId: string, uploadedImageUrl: string | null, uploadedImageFileName: string | undefined) => {
-    const { data: existingSubmission } = await supabase
-      .from('submissions')
-      .select()
-      .eq('store_id', storeId)
-      .eq('equipment_id', equipmentId)
-      .single();
-
-    if (existingSubmission) {
-      const { data, error } = await supabase
+    try {
+      const { data: existingSubmission } = await supabase
         .from('submissions')
-        .update({
-          uploaded_image_url: uploadedImageUrl,
-          uploaded_image_filename: uploadedImageFileName,
-          status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingSubmission.id)
-        .select();
+        .select()
+        .eq('store_id', storeId)
+        .eq('equipment_id', equipmentId)
+        .single();
 
-      if (error) {
-        console.error('Error updating submission:', error);
-        return;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('submissions')
-        .insert({
-          store_id: storeId,
-          equipment_id: equipmentId,
-          uploaded_image_url: uploadedImageUrl,
-          uploaded_image_filename: uploadedImageFileName,
-          status: 'pending'
-        })
-        .select();
+      if (existingSubmission) {
+        const { error } = await supabase
+          .from('submissions')
+          .update({
+            uploaded_image_url: uploadedImageUrl,
+            uploaded_image_filename: uploadedImageFileName,
+            status: 'pending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingSubmission.id);
 
-      if (error) {
-        console.error('Error creating submission:', error);
-        return;
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('submissions')
+          .insert({
+            store_id: storeId,
+            equipment_id: equipmentId,
+            uploaded_image_url: uploadedImageUrl,
+            uploaded_image_filename: uploadedImageFileName,
+            status: 'pending'
+          });
+
+        if (error) throw error;
       }
+    } catch (error) {
+      console.error('Gönderi eklenirken hata oluştu:', error);
     }
   }, []);
 
   const updateSubmissionStatus = useCallback(async (submissionId: string, reviews: Review[]) => {
-    const { error } = await supabase
-      .from('submissions')
-      .update({
-        status: calculateOverallStatus(reviews),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', submissionId);
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({
+          status: calculateOverallStatus(reviews),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', submissionId);
 
-    if (error) {
-      console.error('Error updating submission status:', error);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Gönderi durumu güncellenirken hata oluştu:', error);
     }
   }, [calculateOverallStatus]);
 
   const addReviewToSubmission = useCallback(async (submissionId: string, review: Review) => {
-    const { data: existingReview } = await supabase
-      .from('reviews')
-      .select()
-      .eq('submission_id', submissionId)
-      .eq('manager_id', review.managerId)
-      .single();
-
-    if (existingReview) {
-      const { error } = await supabase
+    try {
+      const { data: existingReview } = await supabase
         .from('reviews')
-        .update({
-          is_correct: review.isCorrect,
-          notes: review.notes,
-          created_at: new Date().toISOString()
-        })
-        .eq('id', existingReview.id);
+        .select()
+        .eq('submission_id', submissionId)
+        .eq('manager_id', review.managerId)
+        .single();
 
-      if (error) {
-        console.error('Error updating review:', error);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from('reviews')
-        .insert({
-          submission_id: submissionId,
-          manager_id: review.managerId,
-          manager_name: review.managerName,
-          is_correct: review.isCorrect,
-          notes: review.notes
-        });
+      if (existingReview) {
+        const { error } = await supabase
+          .from('reviews')
+          .update({
+            is_correct: review.isCorrect,
+            notes: review.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingReview.id);
 
-      if (error) {
-        console.error('Error creating review:', error);
-        return;
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('reviews')
+          .insert({
+            submission_id: submissionId,
+            manager_id: review.managerId,
+            manager_name: review.managerName,
+            is_correct: review.isCorrect,
+            notes: review.notes
+          });
+
+        if (error) throw error;
       }
+    } catch (error) {
+      console.error('Değerlendirme eklenirken hata oluştu:', error);
     }
   }, []);
 
@@ -303,54 +293,54 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [submissions]);
 
   const addEquipment = async (equipmentData: Omit<Equipment, 'id'>) => {
-    const { data, error } = await supabase
-      .from('equipment')
-      .insert({
-        name: equipmentData.name,
-        reference_image_url: equipmentData.referenceImageUrl,
-        description: equipmentData.description
-      })
-      .select();
+    try {
+      const { data, error } = await supabase
+        .from('equipment')
+        .insert({
+          name: equipmentData.name,
+          reference_image_url: equipmentData.referenceImageUrl,
+          description: equipmentData.description
+        })
+        .select();
 
-    if (error) {
-      console.error('Error adding equipment:', error);
-      return;
+      if (error) throw error;
+      if (data) setEquipmentList(prev => [...prev, data[0]]);
+    } catch (error) {
+      console.error('Ekipman eklenirken hata oluştu:', error);
     }
-
-    setEquipmentList(prev => [...prev, data[0]]);
   };
 
   const updateEquipment = async (updatedEquipment: Equipment) => {
-    const { error } = await supabase
-      .from('equipment')
-      .update({
-        name: updatedEquipment.name,
-        reference_image_url: updatedEquipment.referenceImageUrl,
-        description: updatedEquipment.description
-      })
-      .eq('id', updatedEquipment.id);
+    try {
+      const { error } = await supabase
+        .from('equipment')
+        .update({
+          name: updatedEquipment.name,
+          reference_image_url: updatedEquipment.referenceImageUrl,
+          description: updatedEquipment.description
+        })
+        .eq('id', updatedEquipment.id);
 
-    if (error) {
-      console.error('Error updating equipment:', error);
-      return;
+      if (error) throw error;
+      setEquipmentList(prev => prev.map(eq => eq.id === updatedEquipment.id ? updatedEquipment : eq));
+    } catch (error) {
+      console.error('Ekipman güncellenirken hata oluştu:', error);
     }
-
-    setEquipmentList(prev => prev.map(eq => eq.id === updatedEquipment.id ? updatedEquipment : eq));
   };
 
   const deleteEquipment = async (equipmentId: string) => {
-    const { error } = await supabase
-      .from('equipment')
-      .delete()
-      .eq('id', equipmentId);
+    try {
+      const { error } = await supabase
+        .from('equipment')
+        .delete()
+        .eq('id', equipmentId);
 
-    if (error) {
-      console.error('Error deleting equipment:', error);
-      return;
+      if (error) throw error;
+      setEquipmentList(prev => prev.filter(eq => eq.id !== equipmentId));
+      setSubmissions(prev => prev.filter(sub => sub.equipmentId !== equipmentId));
+    } catch (error) {
+      console.error('Ekipman silinirken hata oluştu:', error);
     }
-
-    setEquipmentList(prev => prev.filter(eq => eq.id !== equipmentId));
-    setSubmissions(prev => prev.filter(sub => sub.equipmentId !== equipmentId));
   };
 
   const updateManagerPassword = (newPassword: string) => {
