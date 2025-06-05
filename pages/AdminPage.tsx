@@ -7,8 +7,8 @@ import { Equipment } from '../types.ts';
 import { Modal } from '../components/Modal.tsx';
 import { LoadingIcon } from '../components/LoadingIcon.tsx';
 import { ImageUploader } from '../components/ImageUploader.tsx';
-import { LockClosedIcon, LogOutIcon, EditIcon, TrashIcon, PlusCircleIcon, SaveIcon, InfoIcon, ShieldCheckIcon, EyeIcon } from '../components/IconComponents.tsx';
-import { Lightbox } from '../components/Lightbox.tsx'; // Lightbox import edildi
+import { LockClosedIcon, LogOutIcon, EditIcon, TrashIcon, PlusCircleIcon, SaveIcon, InfoIcon, ShieldCheckIcon, EyeIcon, KeyIcon, CheckCircleIcon, XCircleIcon } from '../components/IconComponents.tsx';
+import { Lightbox } from '../components/Lightbox.tsx';
 
 const initialNewEquipmentData: Omit<Equipment, 'id'> = {
   name: '',
@@ -23,6 +23,8 @@ export const AdminPage: React.FC = () => {
     updateEquipment, 
     deleteEquipment, 
     clearAllData,
+    managerPassword, // Current manager password from context
+    updateManagerPassword, // Function to update manager password
   } = useData();
   const navigate = useNavigate();
 
@@ -45,6 +47,12 @@ export const AdminPage: React.FC = () => {
 
   const [isResetConfirmModalOpen, setIsResetConfirmModalOpen] = useState<boolean>(false);
   const [equipmentFormError, setEquipmentFormError] = useState<string>('');
+
+  // State for manager password change
+  const [newManagerPassword, setNewManagerPassword] = useState<string>('');
+  const [confirmNewManagerPassword, setConfirmNewManagerPassword] = useState<string>('');
+  const [managerPasswordChangeError, setManagerPasswordChangeError] = useState<string>('');
+  const [managerPasswordChangeSuccess, setManagerPasswordChangeSuccess] = useState<string>('');
 
   useEffect(() => {
     const sessionAuth = sessionStorage.getItem('isAdminAuthenticated');
@@ -144,6 +152,34 @@ export const AdminPage: React.FC = () => {
         handleAdminLogout(); 
     }, 1000);
   };
+
+  const handleManagerPasswordChange = () => {
+    setManagerPasswordChangeError('');
+    setManagerPasswordChangeSuccess('');
+
+    if (!newManagerPassword.trim()) {
+      setManagerPasswordChangeError('Yeni şifre boş bırakılamaz.');
+      return;
+    }
+    if (newManagerPassword !== confirmNewManagerPassword) {
+      setManagerPasswordChangeError('Girilen yeni şifreler eşleşmiyor.');
+      return;
+    }
+    if (newManagerPassword.length < 4) {
+      setManagerPasswordChangeError('Yeni şifre en az 4 karakter uzunluğunda olmalıdır.');
+      return;
+    }
+
+    setIsLoading(true);
+    setTimeout(() => {
+        updateManagerPassword(newManagerPassword);
+        setManagerPasswordChangeSuccess('Bölge Müdürü şifresi başarıyla güncellendi.');
+        setNewManagerPassword('');
+        setConfirmNewManagerPassword('');
+        setIsLoading(false);
+    }, 700);
+  };
+
 
   if (!isAdminAuthenticated) {
     return (
@@ -262,20 +298,87 @@ export const AdminPage: React.FC = () => {
           <p className="text-center text-slate-500 py-4">Henüz tanımlı ekipman bulunmamaktadır.</p>
         )}
       </div>
+
+      {/* Manager Password Management Section */}
+      <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="flex items-center mb-6">
+          <KeyIcon className="w-8 h-8 text-teal-600 mr-3" />
+          <h2 className="text-2xl font-semibold text-slate-700">Yönetici Şifre Yönetimi</h2>
+        </div>
+        <div className="max-w-md space-y-4">
+          <div>
+            <label htmlFor="newManagerPass" className="block text-sm font-medium text-slate-700">
+              Yeni Yönetici Şifresi (En az 4 karakter)
+            </label>
+            <input
+              type="password"
+              id="newManagerPass"
+              value={newManagerPassword}
+              onChange={(e) => {
+                setNewManagerPassword(e.target.value);
+                setManagerPasswordChangeError('');
+                setManagerPasswordChangeSuccess('');
+              }}
+              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+              placeholder="Yeni şifreyi girin"
+            />
+          </div>
+          <div>
+            <label htmlFor="confirmNewManagerPass" className="block text-sm font-medium text-slate-700">
+              Yeni Yönetici Şifresini Onayla
+            </label>
+            <input
+              type="password"
+              id="confirmNewManagerPass"
+              value={confirmNewManagerPassword}
+              onChange={(e) => {
+                setConfirmNewManagerPassword(e.target.value);
+                setManagerPasswordChangeError('');
+                setManagerPasswordChangeSuccess('');
+              }}
+              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+              placeholder="Yeni şifreyi tekrar girin"
+            />
+          </div>
+          {managerPasswordChangeError && (
+            <div className="flex items-center p-3 text-sm text-red-700 bg-red-100 rounded-md border border-red-300">
+              <XCircleIcon className="w-5 h-5 mr-2 text-red-500 flex-shrink-0" />
+              {managerPasswordChangeError}
+            </div>
+          )}
+          {managerPasswordChangeSuccess && (
+            <div className="flex items-center p-3 text-sm text-green-700 bg-green-100 rounded-md border border-green-300">
+              <CheckCircleIcon className="w-5 h-5 mr-2 text-green-500 flex-shrink-0" />
+              {managerPasswordChangeSuccess}
+            </div>
+          )}
+          <button
+            onClick={handleManagerPasswordChange}
+            disabled={isLoading}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition-colors flex items-center disabled:opacity-50"
+          >
+            {isLoading && newManagerPassword ? <LoadingIcon className="text-white mr-2" size={20} /> : <SaveIcon className="w-5 h-5 mr-2" />}
+            Yönetici Şifresini Değiştir
+          </button>
+        </div>
+      </div>
       
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-semibold text-slate-700 mb-6">Uygulama Ayarları</h2>
+        <div className="flex items-center mb-6">
+          <TrashIcon className="w-8 h-8 text-red-600 mr-3" />
+          <h2 className="text-2xl font-semibold text-slate-700">Uygulama Ayarları</h2>
+        </div>
         <div className="flex flex-col items-start space-y-3">
             <p className="text-sm text-slate-600">
-                Bu işlem, tüm mağaza gönderilerini, kullanıcı rollerini, yönetici seçimlerini ve tanımlı ekipman listesini geri alınamaz bir şekilde sıfırlayacaktır. 
-                Ekipman listesi, uygulamanın başlangıçtaki varsayılan listesine dönecektir. Lütfen dikkatli olun.
+                Bu işlem, tüm mağaza gönderilerini, kullanıcı rollerini, yönetici seçimlerini, Bölge Müdürü şifresini ve tanımlı ekipman listesini geri alınamaz bir şekilde sıfırlayacaktır. 
+                Ekipman listesi ve Bölge Müdürü şifresi, uygulamanın başlangıçtaki varsayılan değerlerine dönecektir. Lütfen dikkatli olun.
             </p>
             <button
             onClick={openResetConfirmModal}
             className="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-lg shadow-md transition-colors flex items-center disabled:opacity-60"
-            disabled={isLoading}
+            disabled={isLoading && !newManagerPassword} // Disable if another loading is in progress
             >
-             {isLoading ? <LoadingIcon className="text-white mr-2" size={20}/> : <TrashIcon className="w-5 h-5 mr-2" />}
+             {isLoading && !newManagerPassword ? <LoadingIcon className="text-white mr-2" size={20}/> : <TrashIcon className="w-5 h-5 mr-2" />}
              Tüm Uygulama Verilerini Sıfırla
             </button>
         </div>
@@ -362,7 +465,7 @@ export const AdminPage: React.FC = () => {
             <InfoIcon className="w-16 h-16 text-red-500 mx-auto mb-4"/>
             <p className="text-lg font-semibold text-slate-700 mb-2">Emin misiniz?</p>
             <p className="text-slate-600 mb-6">
-                Bu işlem tüm mağaza gönderilerini, kullanıcı oturumlarını ve ekipman listesini varsayılan ayarlara döndürecektir. 
+                Bu işlem tüm mağaza gönderilerini, kullanıcı oturumlarını, Bölge Müdürü şifresini ve ekipman listesini varsayılan ayarlara döndürecektir. 
                 Bu işlem geri alınamaz.
             </p>
         </div>
@@ -370,10 +473,10 @@ export const AdminPage: React.FC = () => {
           <button onClick={() => setIsResetConfirmModalOpen(false)} className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg">Hayır, İptal Et</button>
           <button 
             onClick={handleResetAllData} 
-            disabled={isLoading}
+            disabled={isLoading && !newManagerPassword} // Disable if another loading is in progress
             className="px-6 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center justify-center disabled:opacity-50"
           >
-            {isLoading ? <LoadingIcon className="text-white mr-2" size={18}/> : <TrashIcon className="w-4 h-4 mr-1.5" />}
+            {isLoading && !newManagerPassword ? <LoadingIcon className="text-white mr-2" size={18}/> : <TrashIcon className="w-4 h-4 mr-1.5" />}
             Evet, Tüm Verileri Sıfırla
           </button>
         </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext.tsx';
@@ -13,6 +14,7 @@ export const RoleSelectionPage: React.FC = () => {
     setSelectedStoreId, 
     selectedManagerPersona, 
     setSelectedManagerPersona,
+    managerPassword, // Get managerPassword from context
   } = useData();
   const navigate = useNavigate();
 
@@ -32,8 +34,8 @@ export const RoleSelectionPage: React.FC = () => {
     } else {
         setInternalManagerNameInput('');
     }
-    setIsManagerPasswordVerified(false);
-    setManagerPasswordInput('');
+    setIsManagerPasswordVerified(false); // Reset verification status on role/persona change
+    setManagerPasswordInput(''); // Clear password input
   }, [userRole, selectedStoreId, selectedManagerPersona]);
 
   const handleRoleSelect = (role: UserRole) => {
@@ -69,10 +71,11 @@ export const RoleSelectionPage: React.FC = () => {
       }
     } else if (internalRole === UserRole.MANAGER) {
       if (!isManagerPasswordVerified) {
-        if (managerPasswordInput.trim() === '1234') {
+        // Use managerPassword from context for verification
+        if (managerPasswordInput.trim() === managerPassword) {
           setIsManagerPasswordVerified(true);
           setInputError(null); 
-          setManagerPasswordInput(''); 
+          setManagerPasswordInput(''); // Clear password after successful verification for security
           setIsLoading(false); 
         } else {
           setInputError('Girilen şifre yanlış. Lütfen tekrar deneyin.');
@@ -189,8 +192,9 @@ export const RoleSelectionPage: React.FC = () => {
                     setManagerPasswordInput(e.target.value);
                     if (inputError) setInputError(null);
                   }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleProceed()}
                   placeholder="Lütfen şifreyi giriniz"
-                  maxLength={4}
+                  // maxLength={4} // Maxlength might be removed if passwords become more complex
                   className="block w-full pl-10 pr-3 py-2.5 text-base border-slate-300 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm rounded-md shadow-sm"
                 />
               </div>
@@ -208,6 +212,7 @@ export const RoleSelectionPage: React.FC = () => {
                   setInternalManagerNameInput(e.target.value);
                   if (inputError) setInputError(null);
                 }}
+                onKeyPress={(e) => e.key === 'Enter' && handleProceed()}
                 placeholder="Örn: Alp Yılmaz"
                 className="block w-full px-3 py-2.5 text-base border-slate-300 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm rounded-md shadow-sm"
               />

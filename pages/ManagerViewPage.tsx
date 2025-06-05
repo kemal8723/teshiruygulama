@@ -4,7 +4,10 @@ import { useData } from '../contexts/DataContext.tsx';
 import { Submission, Review, Store, Equipment } from '../types.ts';
 import { Modal } from '../components/Modal.tsx';
 import { LoadingIcon } from '../components/LoadingIcon.tsx';
-import { EyeIcon, InfoIcon, EditIcon, ChevronDownIcon, ChevronUpIcon, CheckCircleIcon, XCircleIcon } from '../components/IconComponents.tsx'; // ThumbsUp/Down removed, CheckIcon/XIcon also removed if they were here
+import { 
+  EyeIcon, InfoIcon, EditIcon, ChevronDownIcon, ChevronUpIcon, CheckCircleIcon, XCircleIcon,
+  ChartBarIcon, DocumentTextIcon, ClockIcon, DownloadIcon // DownloadIcon eklendi
+} from '../components/IconComponents.tsx';
 import { Lightbox } from '../components/Lightbox.tsx'; 
 
 interface ReviewFormProps {
@@ -228,13 +231,208 @@ const SubmissionCard: React.FC<{
   );
 };
 
+
+interface ManagerDashboardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  submissions: Submission[];
+  managerId: string;
+  equipmentList: Equipment[]; // Added for Excel export
+}
+
+const ManagerDashboardModal: React.FC<ManagerDashboardModalProps> = ({ isOpen, onClose, submissions, managerId, equipmentList }) => {
+  if (!isOpen) return null;
+
+  const dashboardStats = useMemo(() => {
+    const activeStoreIds = Array.from(
+      new Set(submissions.filter(sub => sub.uploadedImageUrl).map(sub => sub.storeId))
+    );
+
+    const stats = activeStoreIds.map(storeName => {
+      const storeSubmissions = submissions.filter(sub => sub.storeId === storeName && sub.uploadedImageUrl);
+      const totalSubmissionsCount = storeSubmissions.length;
+      const reviewedByMeCount = storeSubmissions.filter(sub => sub.reviews.some(r => r.managerId === managerId)).length;
+      const pendingMyReviewCount = storeSubmissions.filter(sub => !sub.reviews.some(r => r.managerId === managerId)).length;
+      const overallApprovedCount = storeSubmissions.filter(sub => sub.status === 'approved').length;
+      const overallRejectedCount = storeSubmissions.filter(sub => sub.status === 'rejected').length;
+      const overallOtherCount = storeSubmissions.filter(sub => sub.status === 'pending' || sub.status === 'partial_review').length;
+      
+      const approvalRate = totalSubmissionsCount > 0 ? (overallApprovedCount / totalSubmissionsCount) : 0;
+
+      return {
+        storeName: storeName,
+        totalSubmissionsCount,
+        reviewedByMeCount,
+        pendingMyReviewCount,
+        overallApprovedCount,
+        overallRejectedCount,
+        overallOtherCount,
+        approvalRate,
+      };
+    });
+
+    return stats.sort((a, b) => {
+      if (b.approvalRate !== a.approvalRate) {
+        return b.approvalRate - a.approvalRate;
+      }
+      if (b.totalSubmissionsCount !== a.totalSubmissionsCount) {
+        return b.totalSubmissionsCount - a.totalSubmissionsCount;
+      }
+      return a.storeName.localeCompare(b.storeName, 'tr');
+    });
+
+  }, [submissions, managerId]);
+
+  const handleExportToExcel = () => {
+    // @ts-ignore
+    if (!window.XLSX) {
+      alert("Excel dışa aktarma kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin veya internet bağlantınızı kontrol edin.");
+      return;
+    }
+    // @ts-ignore
+    const XLSX = window.XLSX;
+
+    // Sayfa 1: Değerlendirme Paneli
+    const panelHeaders = ["Mağaza Adı", "Toplam Yükleme", "BM Değerlendirme", "BM Bekleyen", "Genel Onay", "Genel Red", "Genel Diğer"];
+    const panelData = dashboardStats.map(stat => [
+      stat.storeName,
+      stat.totalSubmissionsCount,
+      stat.reviewedByMeCount,
+      stat.pendingMyReviewCount,
+      stat.overallApprovedCount,
+      stat.overallRejectedCount,
+      stat.overallOtherCount,
+    ]);
+    const wsPanel = XLSX.utils.aoa_to_sheet([panelHeaders, ...panelData]);
+
+    // Sayfa 2: Olumsuz Değerlendirmeler
+    const olumsuzHeaders = ["Mağaza Adı", "Ekipman Adı", "Ekipman Açıklaması", "Değerlendiren Yetkili", "Değerlendirme Notu", "Değerlendirme Tarihi"];
+    const olumsuzData: (string | number)[][] = [];
+    submissions.forEach(sub => {
+      if (sub.uploadedImageUrl) {
+        sub.reviews.forEach(review => {
+          if (!review.isCorrect) {
+            const equipment = equipmentList.find(eq => eq.id === sub.equipmentId);
+            olumsuzData.push([
+              sub.storeId,
+              equipment?.name || 'Bilinmeyen Ekipman',
+              equipment?.description || 'Açıklama Yok',
+              review.managerName,
+              review.notes,
+              new Date(review.timestamp).toLocaleString('tr-TR'),
+            ]);
+          }
+        });
+      }
+    });
+    const wsOlumsuz = XLSX.utils.aoa_to_sheet([olumsuzHeaders, ...olumsuzData]);
+    
+    // Auto-fit columns for both sheets
+    const fitCols = (ws: any) => {
+        const objectMaxLength: number[] = [];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        (data as any[][]).forEach((row) => {
+            row.forEach((cell, colIndex) => {
+                objectMaxLength[colIndex] = Math.max(objectMaxLength[colIndex] || 0, String(cell).length + 2); // +2 for a little padding
+            });
+        });
+        ws['!cols'] = objectMaxLength.map(w => ({ width: w }));
+    };
+
+    fitCols(wsPanel);
+    fitCols(wsOlumsuz);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsPanel, "Değerlendirme Paneli");
+    XLSX.utils.book_append_sheet(wb, wsOlumsuz, "Olumsuz Değerlendirmeler");
+
+    XLSX.writeFile(wb, "Watsons_Degerlendirme_Raporu.xlsx");
+  };
+
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Mağaza Değerlendirme Paneli" size="5xl">
+      <div className="mb-4 flex justify-end">
+          <button
+            onClick={handleExportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors flex items-center text-sm"
+            aria-label="Verileri Excel'e Aktar"
+          >
+            <DownloadIcon className="w-5 h-5 mr-2" /> Excel'e Aktar
+          </button>
+        </div>
+      <div className="max-h-[calc(70vh-60px)] overflow-y-auto"> {/* Adjusted max-h for the button */}
+        {dashboardStats.length === 0 ? (
+          <p className="text-slate-500 text-center py-8">Görüntülenecek mağaza veya yükleme bulunmamaktadır.</p>
+        ) : (
+          <div className="overflow-x-auto p-1">
+            <table className="min-w-full divide-y divide-slate-200 border border-slate-200 rounded-lg shadow-sm">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Mağaza Adı</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Toplam Yükleme</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">BM Değerlendirme</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">BM Bekleyen</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Genel Onay</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Genel Red</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Genel Diğer</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {dashboardStats.map(stats => (
+                  <tr key={stats.storeName} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-teal-700">{stats.storeName}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 text-center">
+                      <div className="flex items-center justify-center">
+                        <DocumentTextIcon className="w-4 h-4 mr-1.5 text-slate-400" /> {stats.totalSubmissionsCount}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 text-center">
+                       <div className="flex items-center justify-center">
+                        <EditIcon className="w-4 h-4 mr-1.5 text-blue-500" /> {stats.reviewedByMeCount}
+                       </div>
+                    </td>
+                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-center font-semibold ${stats.pendingMyReviewCount > 0 ? 'text-orange-600' : 'text-slate-600'}`}>
+                      <div className="flex items-center justify-center">
+                        <ClockIcon className={`w-4 h-4 mr-1.5 ${stats.pendingMyReviewCount > 0 ? 'text-orange-500' : 'text-slate-400'}`} /> {stats.pendingMyReviewCount}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 text-center">
+                      <div className="flex items-center justify-center">
+                        <CheckCircleIcon className="w-4 h-4 mr-1.5 text-green-500" /> {stats.overallApprovedCount}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 text-center">
+                       <div className="flex items-center justify-center">
+                        <XCircleIcon className="w-4 h-4 mr-1.5 text-red-500" /> {stats.overallRejectedCount}
+                       </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 text-center">
+                       <div className="flex items-center justify-center">
+                        <InfoIcon className="w-4 h-4 mr-1.5 text-yellow-500" /> {stats.overallOtherCount}
+                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+
 export const ManagerViewPage: React.FC = () => {
-  const { submissions, equipmentList, selectedManagerPersona } = useData();
+  const { stores, submissions, equipmentList, selectedManagerPersona } = useData();
   const [filterStoreName, setFilterStoreName] = useState<string>(''); 
   const [filterStatus, setFilterStatus] = useState<string>(''); 
   
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const [lightboxAltText, setLightboxAltText] = useState<string>('');
+  const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
+
 
   const openLightbox = (url: string, alt: string) => {
     setLightboxImageUrl(url);
@@ -249,7 +447,7 @@ export const ManagerViewPage: React.FC = () => {
   const submittedStoreNames = useMemo(() => {
     const storeNames = new Set<string>();
     submissions.forEach(sub => {
-        if(sub.storeId) { 
+        if(sub.storeId && sub.uploadedImageUrl) { 
             storeNames.add(sub.storeId);
         }
     });
@@ -271,8 +469,18 @@ export const ManagerViewPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold text-teal-700 mb-2">Yönetici Paneli: {selectedManagerPersona.name}</h1>
-        <p className="text-slate-600">Bu sayfada mağazalardan gelen görsel yüklemelerini inceleyebilir, değerlendirebilir ve genel durumu takip edebilirsiniz.</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-teal-700 mb-2">Yönetici Paneli: {selectedManagerPersona.name}</h1>
+            <p className="text-slate-600">Bu sayfada mağazalardan gelen görsel yüklemelerini inceleyebilir, değerlendirebilir ve genel durumu takip edebilirsiniz.</p>
+          </div>
+          <button
+            onClick={() => setIsDashboardModalOpen(true)}
+            className="mt-4 sm:mt-0 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition-colors flex items-center self-start sm:self-center"
+          >
+            <ChartBarIcon className="w-5 h-5 mr-2" /> Değerlendirme Paneli
+          </button>
+        </div>
       
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
@@ -336,6 +544,13 @@ export const ManagerViewPage: React.FC = () => {
           onClose={closeLightbox} 
         />
       )}
+      <ManagerDashboardModal
+        isOpen={isDashboardModalOpen}
+        onClose={() => setIsDashboardModalOpen(false)}
+        submissions={submissions}
+        managerId={selectedManagerPersona.id}
+        equipmentList={equipmentList} // equipmentList prop'u eklendi
+      />
     </div>
   );
 };

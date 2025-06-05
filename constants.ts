@@ -109,3 +109,5 @@ export const MANAGER_PERSONAS: ManagerPersona[] = [
 
 export const APP_NAME = "Watsons Teşhir Uygulamaları";
 export const ADMIN_PASSWORD = "Kg*4060023-";
+export const DEFAULT_MANAGER_PASSWORD = '1234'; // Default manager password
+export const LOCAL_STORAGE_KEY_MANAGER_PASSWORD = 'visualAuditManagerPassword'; // Key for storing manager password
