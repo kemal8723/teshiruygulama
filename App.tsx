@@ -21,22 +21,22 @@ function App(): React.ReactNode {
             <Route path="/admin" element={<AdminPage />} />
             
             {userRole === UserRole.STORE && selectedStoreId && (
-              <Route path="/store\" element={<StoreViewPage />} />
+              <Route path="/store" element={<StoreViewPage />} />
             )}
             {userRole === UserRole.STORE && !selectedStoreId && (
-               <Route path="/store" element={<Navigate to="/\" replace />} />
+               <Route path="/store" element={<Navigate to="/" replace />} />
             )}
 
             {userRole === UserRole.MANAGER && selectedManagerPersona && (
               <Route path="/manager" element={<ManagerViewPage />} />
             )}
              {userRole === UserRole.MANAGER && !selectedManagerPersona && (
-               <Route path="/manager\" element={<Navigate to="/\" replace />} />
+               <Route path="/manager" element={<Navigate to="/" replace />} />
             )}
 
-            <Route path="/store" element={<Navigate to="/\" replace />} />
-            <Route path="/manager" element={<Navigate to="/\" replace />} />
-            <Route path="*" element={<Navigate to="/\" replace />} />
+            <Route path="/store" element={<Navigate to="/" replace />} />
+            <Route path="/manager" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <footer className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-center p-4 text-sm shadow-inner">
