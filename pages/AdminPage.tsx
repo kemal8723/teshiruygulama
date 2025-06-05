@@ -234,12 +234,16 @@ export const AdminPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{equipment.name}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate hover:whitespace-normal hover:overflow-visible">{equipment.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                       <button 
-                         onClick={() => openLightbox(equipment.referenceImageUrl, `Referans: ${equipment.name}`)} 
-                         className="text-teal-600 hover:text-teal-800 underline flex items-center"
-                       >
-                           <EyeIcon className="w-4 h-4 mr-1"/> Görüntüle (Tam Ekran)
-                       </button>
+                       {equipment.referenceImageUrl ? (
+                           <button 
+                             onClick={() => openLightbox(equipment.referenceImageUrl, `Referans: ${equipment.name}`)} 
+                             className="text-teal-600 hover:text-teal-800 underline flex items-center"
+                           >
+                               <EyeIcon className="w-4 h-4 mr-1"/> Görüntüle (Tam Ekran)
+                           </button>
+                        ) : (
+                            <span className="text-slate-400">Görsel Yok</span>
+                        )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button onClick={() => openEditEquipmentModal(equipment)} className="text-cyan-600 hover:text-cyan-800 p-1 rounded hover:bg-cyan-50 transition-colors" title="Düzenle">
@@ -289,6 +293,7 @@ export const AdminPage: React.FC = () => {
             <ImageUploader 
               uploaderId="refImageUploadNew"
               onImageUpload={(_file, base64Image) => setNewEquipmentData({...newEquipmentData, referenceImageUrl: base64Image})}
+              onImageRemove={() => setNewEquipmentData({...newEquipmentData, referenceImageUrl: ''})}
               existingImageUrl={newEquipmentData.referenceImageUrl}
               buttonText="Referans Görseli Yükle"
             />
@@ -321,6 +326,7 @@ export const AdminPage: React.FC = () => {
               <ImageUploader 
                 uploaderId="refImageUploadEdit"
                 onImageUpload={(_file, base64Image) => setEditingEquipment(prev => prev ? {...prev, referenceImageUrl: base64Image} : null)}
+                onImageRemove={() => setEditingEquipment(prev => prev ? {...prev, referenceImageUrl: ''} : null)}
                 existingImageUrl={editingEquipment.referenceImageUrl}
                 buttonText="Yeni Referans Görsel Yükle"
               />

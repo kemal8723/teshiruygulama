@@ -5,7 +5,7 @@ import { ImageUploader } from '../components/ImageUploader.tsx';
 import { Equipment, Submission } from '../types.ts';
 import { Modal } from '../components/Modal.tsx';
 import { LoadingIcon } from '../components/LoadingIcon.tsx';
-import { CheckCircleIcon, XCircleIcon, EyeIcon, UploadCloudIcon, InfoIcon, ThumbsUpIcon, ThumbsDownIcon } from '../components/IconComponents.tsx'; // Updated imports
+import { CheckCircleIcon, XCircleIcon, EyeIcon, UploadCloudIcon, InfoIcon, ThumbsUpIcon, ThumbsDownIcon } from '../components/IconComponents.tsx'; 
 import { Lightbox } from '../components/Lightbox.tsx'; 
 
 const EquipmentCard: React.FC<{ 
@@ -15,7 +15,6 @@ const EquipmentCard: React.FC<{
 }> = ({ equipment, storeName, openLightbox }) => {
   const { getSubmission, addSubmission } = useData();
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploadedImageModalOpen, setIsUploadedImageModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   
   const submission = getSubmission(storeName, equipment.id);
@@ -23,9 +22,16 @@ const EquipmentCard: React.FC<{
   const handleImageUpload = async (file: File, base64Image: string) => {
     console.log(`[EquipmentCard] handleImageUpload called for Store: "${storeName}", Equipment ID: "${equipment.id}", Equipment Name: "${equipment.name}"`);
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload
+    // Simulate network delay for a better UX understanding of loading state
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
     addSubmission(storeName, equipment.id, base64Image, file.name);
     setIsLoading(false);
+  };
+
+  const handleImageRemove = () => {
+    console.log(`[EquipmentCard] handleImageRemove called for Store: "${storeName}", Equipment ID: "${equipment.id}"`);
+    // Potentially add a confirmation dialog here if needed
+    addSubmission(storeName, equipment.id, null, undefined);
   };
   
   const getStatusBadge = () => {
@@ -42,11 +48,11 @@ const EquipmentCard: React.FC<{
     if (submission.status === 'approved') {
       bgColor = 'bg-green-100 text-green-800';
       text = `Onaylandı (${approvals} OLUMLU)`;
-      icon = <CheckCircleIcon className="w-4 h-4 mr-1 text-green-600"/>; // Updated Icon
+      icon = <CheckCircleIcon className="w-4 h-4 mr-1 text-green-600"/>;
     } else if (submission.status === 'rejected') {
       bgColor = 'bg-red-100 text-red-800';
       text = `Reddedildi (${rejections} OLUMSUZ)`;
-      icon = <XCircleIcon className="w-4 h-4 mr-1 text-red-600"/>; // Updated Icon
+      icon = <XCircleIcon className="w-4 h-4 mr-1 text-red-600"/>; 
     } else if ((submission.status === 'pending' || submission.status === 'partial_review') && totalReviews > 0) { 
       bgColor = 'bg-sky-100 text-sky-800';
       text = `İnceleniyor (${approvals} Olumlu, ${rejections} Olumsuz)`;
@@ -78,11 +84,12 @@ const EquipmentCard: React.FC<{
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-40">
             <LoadingIcon size={32} className="text-teal-500" />
-            <p className="text-slate-500 mt-2">Görsel yükleniyor...</p>
+            <p className="text-slate-500 mt-2">Görsel işleniyor...</p>
           </div>
         ) : (
           <ImageUploader 
-            onImageUpload={handleImageUpload} 
+            onImageUpload={handleImageUpload}
+            onImageRemove={handleImageRemove} 
             existingImageUrl={submission?.uploadedImageUrl}
             buttonText="Uygulama Görselini Yükle"
             uploaderId={`imageUploadInput-${equipment.id}`} 
@@ -109,21 +116,6 @@ const EquipmentCard: React.FC<{
         )}
         {getStatusBadge()}
       </div>
-
-      {submission?.uploadedImageUrl && isUploadedImageModalOpen && (
-        <Modal isOpen={isUploadedImageModalOpen} onClose={() => setIsUploadedImageModalOpen(false)} title="Yüklenen Mağaza Görseli (Önizleme)" size="xl">
-            <div className="overflow-auto max-h-[75vh] rounded-lg bg-slate-50 p-2">
-                <img 
-                    src={submission.uploadedImageUrl} 
-                    alt="Yüklenen görsel" 
-                    className="block w-full h-auto rounded-lg shadow-md object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => openLightbox(submission.uploadedImageUrl!, `Yüklenen Görsel - ${equipment.name}`)}
-                />
-            </div>
-            {submission.uploadedImageFileName && <p className="text-xs text-slate-500 mt-2 text-center">Dosya: {submission.uploadedImageFileName}</p>}
-            <p className="text-xs text-slate-400 mt-1 text-center">(Tam ekran görmek için görsele tıklayın)</p>
-        </Modal>
-      )}
 
        {submission && (
         <Modal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} title="Değerlendirme Notları">

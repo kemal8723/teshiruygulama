@@ -4,17 +4,27 @@ import { CameraIcon, UploadCloudIcon, XIcon } from './IconComponents.tsx'; // As
 
 interface ImageUploaderProps {
   onImageUpload: (file: File, base64Image: string) => void;
+  onImageRemove?: () => void; // New optional callback for image removal
   existingImageUrl?: string | null;
   buttonText?: string;
   uploaderId: string; // Unique ID for the input and label
   onUploadError?: (error: Error | ProgressEvent<FileReader>) => void; // Optional error callback
 }
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, existingImageUrl, buttonText = "Görsel Yükle", uploaderId, onUploadError }) => {
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onImageRemove, existingImageUrl, buttonText = "Görsel Yükle", uploaderId, onUploadError }) => {
   const [preview, setPreview] = useState<string | null>(existingImageUrl || null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // Local loading state for file reading
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Effect to sync preview with existingImageUrl prop if it changes externally
+  React.useEffect(() => {
+    setPreview(existingImageUrl || null);
+    if (!existingImageUrl && fileInputRef.current) {
+        fileInputRef.current.value = ""; // Clear file input if existingImageUrl is removed externally
+        setFileName(null);
+    }
+  }, [existingImageUrl]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,6 +56,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, exi
             console.error("[ImageUploader] FileReader result is null or empty after successful read.");
             if (onUploadError) onUploadError(new Error("FileReader result is empty."));
             setPreview(null);
+            setFileName(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
             return;
           }
           setPreview(base64String);
@@ -94,9 +106,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, exi
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
-    // Notify parent that image was removed; using onImageUpload with null might be an option or a dedicated callback
-    // For now, this just clears the preview. Parent logic for "removing" an image (e.g. setting URL to null)
-    // would typically be handled by re-uploading or a specific "delete" action.
+    if (onImageRemove) {
+      onImageRemove();
+    }
   };
 
   return (

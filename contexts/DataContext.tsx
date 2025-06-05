@@ -19,7 +19,7 @@ interface DataContextType {
   selectedManagerPersona: ManagerPersona | null;
   setSelectedManagerPersona: (persona: ManagerPersona | null) => void;
   submissions: Submission[];
-  addSubmission: (storeId: string, equipmentId: string, uploadedImageUrl: string, uploadedImageFileName: string) => void;
+  addSubmission: (storeId: string, equipmentId: string, uploadedImageUrl: string | null, uploadedImageFileName: string | undefined) => void;
   updateSubmissionStatus: (submissionId: string, reviews: Review[]) => void;
   addReviewToSubmission: (submissionId: string, review: Review) => void;
   getSubmission: (storeId: string, equipmentId: string) => Submission | undefined;
@@ -129,13 +129,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const rejectionCount = reviews.filter(r => !r.isCorrect).length;
 
     if (rejectionCount > 0) return 'rejected';
+    // If all existing reviews are approvals and there's at least one review
     if (approvalCount > 0 && approvalCount === reviews.length) return 'approved'; 
+    // If there are some approvals, no rejections, but not all reviews are approvals (implies some managers haven't reviewed or there are other complexities)
     if (approvalCount > 0 && approvalCount < reviews.length && rejectionCount === 0) return 'partial_review'; 
     
-    return 'pending';
+    return 'pending'; // Default if other conditions aren't met (e.g. only rejections but rejectionCount is 0 logic was flawed)
   }, []);
 
-  const addSubmission = useCallback((storeId: string, equipmentId: string, uploadedImageUrl: string, uploadedImageFileName: string) => {
+  const addSubmission = useCallback((storeId: string, equipmentId: string, uploadedImageUrl: string | null, uploadedImageFileName: string | undefined) => {
     setSubmissions(prevSubmissions => {
       const submissionIndex = prevSubmissions.findIndex(s => s.storeId === storeId && s.equipmentId === equipmentId);
       const newSubmissionData = {
@@ -147,15 +149,36 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (submissionIndex > -1) {
         const updatedSubmissions = [...prevSubmissions];
         const existingSubmission = updatedSubmissions[submissionIndex];
-        // If the image URL changes, reset reviews and status. Otherwise, keep existing reviews.
-        const reviewsAndStatus = existingSubmission.uploadedImageUrl !== uploadedImageUrl || !existingSubmission.uploadedImageUrl // Also reset if previously no image
-          ? { reviews: [], status: 'pending' as Submission['status'] }
-          : { reviews: existingSubmission.reviews, status: calculateOverallStatus(existingSubmission.reviews) };
-        updatedSubmissions[submissionIndex] = { ...existingSubmission, ...newSubmissionData, ...reviewsAndStatus };
+        
+        let reviewsAndStatus;
+        // Reset reviews if:
+        // 1. The image is being removed (new URL is null).
+        // 2. The image URL changes from one valid URL to another.
+        // 3. An image is added where there was none previously.
+        if (uploadedImageUrl === null || existingSubmission.uploadedImageUrl !== uploadedImageUrl || (!existingSubmission.uploadedImageUrl && uploadedImageUrl)) {
+          reviewsAndStatus = { reviews: [], status: 'pending' as Submission['status'] };
+        } else {
+          // Image URL is the same (and not null), keep existing reviews and re-calculate status.
+          reviewsAndStatus = { reviews: existingSubmission.reviews, status: calculateOverallStatus(existingSubmission.reviews) };
+        }
+        
+        updatedSubmissions[submissionIndex] = { 
+          ...existingSubmission, 
+          ...newSubmissionData, 
+          ...reviewsAndStatus 
+        };
         return updatedSubmissions;
       } else {
+        // Adding a new submission.
         const newSubmission: Submission = {
-          id: `${storeId}-${equipmentId}-${Date.now()}`, storeId, equipmentId, ...newSubmissionData, reviews: [], status: 'pending',
+          id: `${storeId}-${equipmentId}-${Date.now()}`, 
+          storeId, 
+          equipmentId, 
+          uploadedImageUrl, 
+          uploadedImageFileName, 
+          reviews: [], 
+          status: 'pending', 
+          timestamp: new Date().toISOString(),
         };
         return [...prevSubmissions, newSubmission];
       }
@@ -176,6 +199,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSubmissions(prev => {
       return prev.map(s => {
         if (s.id === submissionId) {
+          // Cannot add review if image is not present for the submission
+          if (!s.uploadedImageUrl) return s; 
+
           const existingReviewIndex = s.reviews.findIndex(r => r.managerId === review.managerId);
           let updatedReviews;
           if (existingReviewIndex > -1) {
@@ -201,39 +227,33 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: `eq-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         ...equipmentData,
       };
-      return [...prevList, newEquipment]; // This change will trigger the useEffect to save to localStorage
+      return [...prevList, newEquipment]; 
     });
   };
 
   const updateEquipment = (updatedEquipment: Equipment) => {
     setEquipmentList(prevList =>
       prevList.map(eq => (eq.id === updatedEquipment.id ? updatedEquipment : eq))
-    ); // This change will trigger the useEffect to save to localStorage
+    ); 
   };
 
   const deleteEquipment = (equipmentId: string) => {
     setEquipmentList(prevList => prevList.filter(eq => eq.id !== equipmentId));
-    // Optionally, also delete related submissions
     setSubmissions(prevSubs => prevSubs.filter(sub => sub.equipmentId !== equipmentId));
-     // Both state changes will trigger their respective useEffects to update localStorage
   };
 
-  // Clears all application data from state and localStorage.
-  // This is intended to be used from the Admin Panel.
   const clearAllData = () => {
-    // Clear from localStorage
     localStorage.removeItem(LOCAL_STORAGE_KEY_SUBMISSIONS);
     localStorage.removeItem(LOCAL_STORAGE_KEY_USER_ROLE);
     localStorage.removeItem(LOCAL_STORAGE_KEY_STORE_ID);
     localStorage.removeItem(LOCAL_STORAGE_KEY_MANAGER_PERSONA);
     localStorage.removeItem(LOCAL_STORAGE_KEY_EQUIPMENT_LIST);
 
-    // Reset state
     setSubmissions([]);
     setUserRoleState(null);
     setSelectedStoreIdState(null);
     setSelectedManagerPersonaState(null);
-    setEquipmentList(DEFAULT_EQUIPMENT_LIST); // Reset equipment list to default. This also updates localStorage via its useEffect.
+    setEquipmentList(DEFAULT_EQUIPMENT_LIST); 
   };
 
   return (
