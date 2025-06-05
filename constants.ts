@@ -1,0 +1,111 @@
+
+import { Store, Equipment, ManagerPersona } from './types.ts';
+
+export const STORES: Store[] = [
+  { id: 'store1', name: 'İstanbul - Kadıköy Mağazası' },
+  { id: 'store2', name: 'Ankara - Çankaya Mağazası' },
+  { id: 'store3', name: 'İzmir - Alsancak Mağazası' },
+  { id: 'store4', name: 'Bursa - Nilüfer Mağazası' },
+];
+
+export const EQUIPMENT_LIST: Equipment[] = [
+  { 
+    id: 'haziran_eq1', 
+    name: 'M_GB1', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq1/600/400',
+    description: 'GÜNEŞ'
+  },
+  { 
+    id: 'haziran_eq2', 
+    name: 'M_GB2', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq2/600/400',
+    description: 'DEBORAH (Alt raflar hero cilt + Pure Beauty BB&CC eğer red planı varsa farklı seri PB de olabilir)'
+  },
+  { 
+    id: 'haziran_eq3', 
+    name: 'M_GB3 50CM', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq3/600/400',
+    description: 'LOREAL PARIS ELSEVE + CİLT + MAKYAJ'
+  },
+  { 
+    id: 'haziran_eq4', 
+    name: 'M_GB3 75CM', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq4/600/400',
+    description: 'LOREAL PARIS ELSEVE + CİLT + MAKYAJ'
+  },
+  { 
+    id: 'haziran_eq5', 
+    name: 'P_GB1', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq5/600/400',
+    description: 'GÜNEŞ'
+  },
+  { 
+    id: 'haziran_eq6', 
+    name: 'P_GB2', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq6/600/400',
+    description: 'DEBORAH (Alt raflar hero cilt + Pure Beauty BB&CC eğer red planı varsa farklı seri PB de olabilir)'
+  },
+  { 
+    id: 'haziran_eq7', 
+    name: 'P_GB3 50CM', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq7/600/400',
+    description: 'LOREAL PARIS ELSEVE + CİLT + MAKYAJ'
+  },
+  { 
+    id: 'haziran_eq8', 
+    name: 'P_GB3 75CM', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq8/600/400',
+    description: 'LOREAL PARIS ELSEVE + CİLT + MAKYAJ'
+  },
+  { 
+    id: 'haziran_eq9', 
+    name: 'M_SR2B', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq9/600/400',
+    description: 'ELSEVE 20.YIL'
+  },
+  { 
+    id: 'haziran_eq10', 
+    name: 'M_SR3A', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq10/600/400',
+    description: 'KARMA GÜNEŞ'
+  },
+  { 
+    id: 'haziran_eq11', 
+    name: 'M_SR4A', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq11/600/400',
+    description: 'WATSONS GÜNEŞ HERO'
+  },
+  { 
+    id: 'haziran_eq12', 
+    name: 'M_SR7A', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq12/600/400',
+    description: 'WATSONS GÜNLÜK PED'
+  },
+  { 
+    id: 'haziran_eq13', 
+    name: 'P_SR2B', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq13/600/400',
+    description: 'ELSEVE 20. YIL' // Note: Image has "20. YIL", keeping consistency
+  },
+  { 
+    id: 'haziran_eq14', 
+    name: 'P_SR5A', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq14/600/400',
+    description: 'WATSONS GÜNEŞ HERO'
+  },
+  { 
+    id: 'haziran_eq15', 
+    name: 'P_SR5B', 
+    referenceImageUrl: 'https://picsum.photos/seed/ref_haziran_eq15/600/400',
+    description: 'KARMA GÜNEŞ'
+  }
+];
+
+export const MANAGER_PERSONAS: ManagerPersona[] = [
+  { id: 'managerA', name: 'Bölge Müdürü Alp Yılmaz' },
+  { id: 'managerB', name: 'Bölge Müdürü Beste Kara' },
+  { id: 'managerC', name: 'Bölge Müdürü Cem Demir' },
+];
+
+export const APP_NAME = "Watsons Teşhir Uygulamaları";
+export const ADMIN_PASSWORD = "Kg*4060023-";
