@@ -1,12 +1,12 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { RoleSelectionPage } from './pages/RoleSelectionPage.tsx';
-import { StoreViewPage } from './pages/StoreViewPage.tsx';
-import { ManagerViewPage } from './pages/ManagerViewPage.tsx';
-import { AdminPage } from './pages/AdminPage.tsx';
-import { Header } from './components/Header.tsx';
-import { useData } from './contexts/DataContext.tsx';
-import { UserRole } from './types.ts';
+import { RoleSelectionPage } from './pages/RoleSelectionPage';
+import { StoreViewPage } from './pages/StoreViewPage';
+import { ManagerViewPage } from './pages/ManagerViewPage';
+import { AdminPage } from './pages/AdminPage';
+import { Header } from './components/Header';
+import { useData } from './contexts/DataContext';
+import { UserRole } from './types';
 
 function App(): React.ReactNode {
   const { userRole, selectedStoreId, selectedManagerPersona } = useData();
@@ -21,22 +21,22 @@ function App(): React.ReactNode {
             <Route path="/admin" element={<AdminPage />} />
             
             {userRole === UserRole.STORE && selectedStoreId && (
-              <Route path="/store\" element={<StoreViewPage />} />
+              <Route path="/store" element={<StoreViewPage />} />
             )}
             {userRole === UserRole.STORE && !selectedStoreId && (
-               <Route path="/store\" element={<Navigate to="/\" replace />} />
+               <Route path="/store" element={<Navigate to="/" replace />} />
             )}
 
             {userRole === UserRole.MANAGER && selectedManagerPersona && (
-              <Route path="/manager\" element={<ManagerViewPage />} />
+              <Route path="/manager" element={<ManagerViewPage />} />
             )}
              {userRole === UserRole.MANAGER && !selectedManagerPersona && (
-               <Route path="/manager\" element={<Navigate to="/\" replace />} />
+               <Route path="/manager" element={<Navigate to="/" replace />} />
             )}
 
-            <Route path="/store" element={<Navigate to="/\" replace />} />
-            <Route path="/manager\" element={<Navigate to="/\" replace />} />
-            <Route path="*\" element={<Navigate to="/\" replace />} />
+            <Route path="/store" element={<Navigate to="/" replace />} />
+            <Route path="/manager" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <footer className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-center p-4 text-sm shadow-inner">
