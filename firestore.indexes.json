@@ -1,0 +1,11 @@
+
+{
+  "indexes": [
+    // submissions koleksiyonu için equipmentId üzerinde tanımlı olan
+    // ve "HTTP Error: 400, this index is not necessary" hatasına neden olan
+    // kompozit indeks tanımı buradan kaldırıldı.
+    // Firestore, `db.collection('submissions').where('equipmentId', '==', equipmentId)`
+    // gibi sorgular için tek alanlı indeksleri otomatik olarak oluşturur.
+  ],
+  "fieldOverrides": []
+}

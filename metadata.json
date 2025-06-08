@@ -1,0 +1,9 @@
+{
+  "name": "Watsons Teşhir Uygulamaları",
+  "description": "Mağaza içi görsel düzenlemelerin ve insert yerleşimlerinin takibi ve onayı için bir uygulama. Mağazaların görselleri yüklemesini ve bölge müdürlerinin bu görselleri denetlemesini sağlar.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "lastReviewed": "2024-07-26",
+  "prompt": ""
+}
